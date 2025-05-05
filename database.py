@@ -10,6 +10,9 @@ def generate_db_schema(engine):
     for table in metadata.sorted_tables:
         schema_description.append(f"-- Tabela {table.name}")
         columns = []
+        fk_constraints = []
+        
+        # Definicje kolumn
         for column in table.columns:
             col_info = f"{column.name} {column.type}"
             if column.primary_key:
@@ -20,13 +23,32 @@ def generate_db_schema(engine):
                 col_info += " NOT NULL"
             if column.unique:
                 col_info += " UNIQUE"
-            for fk in column.foreign_keys:
-                col_info += f" REFERENCES {fk.column.table.name}({fk.column.name})"
             columns.append(col_info)
+        
+        # Klucze obce z opcjami ON DELETE/UPDATE
+        for constraint in table.foreign_key_constraints:
+            parent_cols = [col.name for col in constraint.columns]
+            ref_table = constraint.elements[0].column.table.name
+            ref_cols = [fk.column.name for fk in constraint.elements]
+            fk_sql = (
+                f"FOREIGN KEY ({', '.join(parent_cols)}) "
+                f"REFERENCES {ref_table}({', '.join(ref_cols)})"
+            )
+            if constraint.ondelete:
+                fk_sql += f" ON DELETE {constraint.ondelete.upper()}"
+            if constraint.onupdate:
+                fk_sql += f" ON UPDATE {constraint.onupdate.upper()}"
+            fk_constraints.append(fk_sql)
+        
+        # Łączenie kolumn i constraintów
+        all_defs = columns + fk_constraints
         schema_description.append(
-            f"CREATE TABLE {table.name} (\n  " + ",\n  ".join(columns) + "\n);\n"
+            f"CREATE TABLE {table.name} (\n  " + ",\n  ".join(all_defs) + "\n);\n"
         )
+    
     return "\n".join(schema_description)
+
+
 
 def init_db_connection():
     """Inicjalizuje połączenie z bazą MySQL"""

@@ -5,7 +5,7 @@ def main():
     db_connection, DB_SCHEMA = init_db_connection()
     if not db_connection or not DB_SCHEMA:
         return
-
+    print(DB_SCHEMA)
     try:
         while True:
             user_input = input("\nPodaj polecenie: ")
